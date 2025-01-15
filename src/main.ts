@@ -1,18 +1,14 @@
 import "./assets/base.css";
 
 import { createApp } from "vue";
-import { createPinia } from "pinia";
-
 import App from "./App.vue";
 import router from "./router";
 import Cookies from "js-cookie";
-import ProgressBar from "./components/Loaders/ProgressBar.vue";
+import { COOKIES_STORAGE_KEYS } from "./config/constant";
+
 
 const app = createApp(App);
 
-app.component("progress-bar", ProgressBar);
-
-app.use(createPinia());
 app.use(router);
 
 // Add your condition before mounting
@@ -22,7 +18,7 @@ router.isReady().then(() => {
 
   // TODO: Check previous session exists or not in cookies
 
-  if (Cookies.get("session_id")) {
+  if (Cookies.get(COOKIES_STORAGE_KEYS.session_token)) {
     shouldRedirectToUpload = false;
   }
 

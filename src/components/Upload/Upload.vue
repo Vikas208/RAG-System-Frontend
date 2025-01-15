@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-yellow-50 p-4">
     <div
-      class="w-full max-w-md mx-auto p-6 bg-yellow-300 border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all duration-500 transform hover:scale-105 hover:shadow-[16px_16px_0px_rgba(0,0,0,1)]"
+      class="w-full max-w-md mx-auto p-6 bg-yellow-300 border-4 border-black shadow-[12px_12px_0px_rgba(0,0,0,1)] transition-all duration-500 transform hover:shadow-[16px_16px_0px_rgba(0,0,0,1)]"
     >
       <form
         @dragenter.prevent="handleDragEnter"
@@ -23,7 +23,7 @@
           @mousedown="isPressed = true"
           @mouseup="isPressed = false"
           @mouseleave="isPressed = false"
-          class="w-full h-64 border-4 border-dashed border-black flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative hover:bg-yellow-400"
+          class="w-full h-64 border-4 border-dashed border-black flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative hover:bg-yellow-400 hover:scale-105"
           :class="{
             'bg-yellow-600 scale-110 rotate-2': isDragActive,
             'bg-yellow-300': !isDragActive,
@@ -123,20 +123,47 @@
       </transition-group>
     </div>
   </div>
-  <progress-bar v-if="uploading" :progress="uploadProgress" />
+
+  <LoadingIndicator v-if="loading" />
+
+  <DialogBox
+    :type="'success'"
+    :title="'Success!'"
+    :message="'File uploaded successfully! Redirecting to chat...'"
+    :isVisible="isSuccessVisible"
+    @update:isVisible="isSuccessVisible = $event"
+  />
+  <DialogBox
+    :type="'error'"
+    :title="'Error!'"
+    :message="'Something went wrong, please try again.'"
+    :isVisible="isErrorVisible"
+    @update:isVisible="isErrorVisible = $event"
+  />
 </template>
 
 <script>
-import ProgressBar from "@/components/Loaders/ProgressBar.vue";
+import LoadingIndicator from "@/components/Loaders/Loading.vue";
+import DialogBox from "@/components/Dialog/Dialog.vue";
+import { createSessionAPI } from "@/services/auth.service";
+import { uploadFileAPI } from "@/services/upload.service";
+import Cookies from "js-cookie";
+import { ACCEPTED_FILES_TYPE, COOKIES_STORAGE_KEYS } from "@/config/constant";
+
 export default {
-  components: { ProgressBar },
+  components: { DialogBox, LoadingIndicator },
+  mounted() {
+    // Create fresh session on server
+    this.createSession();
+  },
   data() {
     return {
       isDragActive: false,
       file: null,
       isPressed: false,
-      uploading: false,
-      uploadProgress: 0,
+      loading: false,
+      isSuccessVisible: false,
+      isErrorVisible: false,
     };
   },
   methods: {
@@ -155,16 +182,25 @@ export default {
       const droppedFiles = Array.from(event.dataTransfer.files);
 
       if (droppedFiles.length) {
-        this.file = droppedFiles[0];
+        this.validateFile(droppedFiles[0]);
       }
     },
+
+    validateFile(file) {
+      // check file extension and size
+      let extension = file.name.split(".").pop().toLowerCase();
+      if (ACCEPTED_FILES_TYPE.includes(extension)) {
+        this.file = file;
+      } else {
+        this.isErrorVisible = true;
+      }
+    },
+
     handleFileChange(event) {
       const selectedFiles = Array.from(event.target.files);
       if (selectedFiles.length) {
-        this.file = selectedFiles[0];
+        this.validateFile(selectedFiles[0]);
       }
-
-      console.log(this.file);
     },
     openFileExplorer() {
       this.$refs.fileInput.click();
@@ -173,26 +209,39 @@ export default {
       this.file = null;
     },
     async handleUploadFile() {
-      if (!this.file) return;
-
-      this.uploading = true;
-      this.uploadProgress = 0;
-
-      // Simulate file upload progress
-      for (let i = 0; i <= 100; i++) {
-        await this.simulateProgress(i);
+      try {
+        if (!this.file) return;
+        this.loading = true;
+        const formdata = new FormData();
+        formdata.append("file", this.file);
+        const response = await uploadFileAPI(formdata);
+        if (response.status === 200) {
+          this.isSuccessVisible = true;
+          setTimeout(() => {
+            this.isSuccessVisible = false;
+            window.location.href = "/chat";
+          }, 3000);
+        } else {
+          this.isErrorVisible = true;
+        }
+      } catch (err) {
+        console.log(err);
+      } finally {
+        this.loading = false;
       }
-
-      this.uploading = false;
-      alert("File uploaded successfully!");
     },
-    simulateProgress(value) {
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          this.uploadProgress = value;
-          resolve();
-        }, 50); // Simulate upload speed
-      });
+    async createSession() {
+      try {        
+        this.loading = true;
+        const response = await createSessionAPI();
+        // set token in cookies
+        let token = response.data.session_token;
+        Cookies.set(COOKIES_STORAGE_KEYS.session_token, token);
+      } catch (err) {
+        console.log(err);
+      } finally {        
+        this.loading = false;
+      }
     },
   },
 };

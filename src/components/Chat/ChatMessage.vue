@@ -1,48 +1,53 @@
 <!-- MessageBubble.vue -->
 <template name="MessageBubble">
-    <div 
-      class="flex w-full"
-      :class="isUser ? 'justify-end' : 'justify-start'"
+  <div class="flex w-full" :class="isUser ? 'justify-end' : 'justify-start'">
+    <div
+      class="max-w-[80%] p-3 rounded-lg text-black relative min-w-[20%]"
+      :class="
+        isUser
+          ? 'bg-yellow-400 border-2 border-black'
+          : 'bg-gray-100 border-2 border-black'
+      "
     >
-      <div 
-        class="max-w-[80%] p-3 rounded-lg text-black relative min-w-[20%]"
-        :class="isUser 
-          ? 'bg-yellow-400 border-2 border-black' 
-          : 'bg-gray-100 border-2 border-black'"
-      >
-        <p>{{ content }}</p>
-        <div 
-          v-if="timestamp" 
-          class="text-xs text-gray-600 mt-1 text-right"
-        >
-          {{ formattedTimestamp }}
-        </div>
+      <!-- <p v-html="content"></p> -->
+      <LatexMessage :content="content" />
+      <div v-if="timestamp" class="text-xs text-gray-600 mt-1 text-right">
+        {{ formattedTimestamp }}
       </div>
     </div>
-  </template>
-  
-  <script>
-  export default {
-    props: {
-      content: {
-        type: String,
-        required: true
-      },
-      isUser: {
-        type: Boolean,
-        default: false
-      },
-      timestamp: {
-        type: Date,
-        default: null
-      }
+  </div>
+</template>
+
+<script>
+import LatexMessage from "./LatexMessage.vue";
+
+export default {
+  components: {
+    LatexMessage,
+  },
+  props: {
+    content: {
+      type: String,
+      required: true,
     },
-    computed: {
-      formattedTimestamp() {
-        return this.timestamp 
-          ? this.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-          : ''
-      }
-    }
-  }
-  </script>
+    isUser: {
+      type: Boolean,
+      default: false,
+    },
+    timestamp: {
+      type: Date,
+      default: null,
+    },
+  },
+  computed: {
+    formattedTimestamp() {
+      return this.timestamp
+        ? this.timestamp.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "";
+    },
+  },
+};
+</script>
